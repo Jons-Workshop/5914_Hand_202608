@@ -568,6 +568,7 @@ void	update_run_screen	()	{
 
 
 void	draw_mph::update	(float speed)	{
+
 #define	MPH_DP_X	(MPH_X + 172)
 #define	MPH_DP_Y	(MPH_Y + 50)
 //	sFONT * Font = &Arial_Narrow50x64;
@@ -646,9 +647,7 @@ extern	char	TodaysLogFileName[] ;	//	Each time prog runs a new .csv file is crea
 
 void	draw_clock	()	{
 	char	t[16];
-//	char	u[16];
 	get_time	(t);
-//	log_a_block	(t);
 	LCD_CS_ACTIVE;
 	DrawString	(10, 40, t,	&Arial_Narrow_Bold15x19,    WHITE, BLUE);
 	//	DrawString (10, 40, "Connecting", 	&Arial_Narrow_Bold19x23,    WHITE, BLUE); put clock readout here

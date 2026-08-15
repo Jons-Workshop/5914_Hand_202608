@@ -13,6 +13,7 @@
 
 #include	<cstdio>			//	for sprintf
 #include	<cstring>			//	for strlen
+#include	<ctype.h>			//	for isspace
 
 #include	"parameters.hpp"
 #include	"Serial.hpp"
@@ -40,25 +41,23 @@ bool	set_one_wrapper_cmd	(parameters &);
 	return	(true);
 }*/
 
-struct cli_menu_entry_set	const  settings_data[]
+/*struct cli_menu_entry_set	const  settings_data[]	NO USER SETTINGS
 {    // Can not form pointers to member functions.
 	{"?",     	"List user settings, alters none", null_cmd, static_cast<int32_t>(MenuType::SETTINGS)}, //	Examples of use follow
-	{"defaults","Set to factory defaults", set_defaults_cmd},     //	restore factory defaults to all settings
-	{"mca",		"My CAN Address", 		set_one_wrapper_cmd, 	0, 0x7ff, 6, 1.0},   //
+	{"defaults","Set to defaults", set_defaults_cmd},     //	restore factory defaults to all settings
+//	{"mca",		"My CAN Address", 		set_one_wrapper_cmd, 	0, 0x7ff, 6, 1.0},   //
 	{nullptr},	//	June 2023 new end of list delimiter. No need to pass sizeof
-}	;
+}	;*/
 
 //	Prototypes for functions included in 'pc_command_list' menu structure
 bool	menucmd	(parameters &);
 bool	ping_cmd	(parameters &);
 bool	getvb_cmd	(parameters &);
 bool	rtc_cmd	(parameters &);
-//bool	cnc_cmd	(parameters &);
 bool	adc_cmd	(parameters &);
 bool	st_cmd	(parameters &);
 bool	sd_cmd	(parameters &);
 bool	bril_cmd	(parameters &);
-bool	edit_settings_cmd	(parameters &);
 //bool	grow_file_cmd	(parameters &);
 bool	get_file_cmd	(parameters &);
 bool	del_file_cmd	(parameters &);
@@ -66,6 +65,7 @@ bool	dir_cmd			(parameters &);
 bool	make_dir_cmd	(parameters & par)	;
 bool	wav_cmd	(parameters & par)	;
 bool	odo_cmd	(parameters & par)	;
+bool	got_log_response	(parameters & par);
 
 
 //#if 0
@@ -84,19 +84,18 @@ struct  cli_menu_entry_set	const pc_command_list[] = {
 	{"md", "Make directory", 		make_dir_cmd},
 	{"dir", "File Directory", 			dir_cmd},
 	{"bril", "Disp brightness 0-99", bril_cmd},		//	New July 2026
-	{"us", "user settings", 			edit_settings_cmd},
 	{"file", "get text file", 			get_file_cmd},
 	{"del", "Delete file", 		del_file_cmd},
 	{"wav", "look into .wav file", 		wav_cmd},
 	{"odo", "test odo code", 		odo_cmd},
-    {"nu", "do nothing", null_cmd},
+	{"logt", "test log code", 		got_log_response},
     {nullptr},	//	June 2023 new end of list delimiter. No need to pass sizeof
 }   ;
 //#endif
 
 
 bool	got_vis_response	(parameters &);
-bool	got_log_response	(parameters & par);
+//bool	got_log_response	(parameters & par);
 bool	got_vb_response	(parameters &);
 bool	got_speed_response	(parameters & par)	;
 bool	got_motorspeeds_response	(parameters & par)	;
@@ -127,13 +126,13 @@ struct  cli_menu_entry_set	const bluetooth_commands[] = {
     {"?", "Lists available commands", 	menucmd, static_cast<int32_t>(MenuType::MENU)},
 	{"p", "Received a 'ping'. Update local ping count", ping_cmd},
 //	{"adc", "check adc dma working", 	adc_cmd},
-	{"us", "user settings", 			edit_settings_cmd},
+//	{"us", "user settings", 			edit_settings_cmd},
 	{"vis", "got response to '?vis'", got_vis_response},
 	{"log", "got response to '?log'", got_log_response},
 	{"vb", "got response to '?vb'", got_vb_response},
 	{"s", "got response to '?s'", got_speed_response},
 	{"m", "got response to '?m'", got_motorspeeds_response},
-    {"nu", "do nothing", null_cmd},
+//    {"nu", "do nothing", null_cmd},
     {nullptr},	//	June 2023 new end of list delimiter. No need to pass sizeof
 }   ;
 //#endif
@@ -297,7 +296,21 @@ extern	float	Loco_Speed;
  *
  */
 bool	got_log_response	(parameters & par)	{	//	Read parameters and convert to comma-delimitted text list to file
-	uint32_t	numof = par.numof_floats;
+	int	tmp;
+//	uint32_t	numof = par.numof_floats;			//	Maybe best to read input string, replace spaces with commas (avoid doubt over int/float)
+					//	Or better still, specify format as e.g. "1234,2345,3.142,-23.594,16\n"
+					//	Last char should forever be '\n'
+	const char * p = par.command_line;
+	while	(isalpha(*p))
+		p++;				//	count over "log"
+//	while	(isspace(*p))
+//		p++;				//	count over " "
+	//	Now p -> "1234,2345,etc\n"
+	tmp = strlen	(p);
+	if	(tmp)	{
+		pc.write	("log response ", 13);
+		pc.write	(p, tmp);
+	}
 	return	(true);
 }
 
@@ -315,10 +328,7 @@ bool	got_vis_response	(parameters & par)	{
 
 
 bool	got_vb_response	(parameters & par)	{
-//	char	t[64];
 	V_Loco_Batt = par.flt[0];
-//	size_t	len = sprintf	(t, "Got ?vb response [%.1f]V\r\n", V_Batt);
-//	pc.write	(t, len);
 	return	(true);
 }
 
@@ -330,10 +340,7 @@ bool	got_motorspeeds_response	(parameters & par)	{
 
 
 bool	got_speed_response	(parameters & par)	{
-//	char	t[64];
 	Loco_Speed = par.flt[0];
-//	size_t	len = sprintf	(t, "Got ?s response [%.1f]V\r\n", Loco_Speed);
-//	pc.write	(t, len);
 	return	(true);
 }
 
@@ -532,19 +539,6 @@ bool	getvb_cmd	(parameters &)	{
 }
 
 
-bool	edit_settings_cmd (struct parameters & par)     {	//	Here from CLI having found "us "
-//	bool	rv =	(my_settings.edit	(par));
-	list_settings	(settings_data)	;
-//	return	(rv)	;
-	return	(false)	;	//	temp jf
-}
-
-
-bool    set_one_wrapper_cmd (struct parameters & par)     {	//	Called via edit, a.second_word found in edit
-//	return	(my_settings.set_one	(par));
-	return	(false)	;	//	temp jf
-}
-
 
 bool    null_cmd (struct parameters & par)     {
 	const char t[] = "null command - does nothing useful!\r\n";
@@ -552,11 +546,6 @@ bool    null_cmd (struct parameters & par)     {
     return	(true);
 }
 
-
-bool    set_defaults_cmd (struct parameters & par)     {
-//	return	(my_settings.set_defaults());
-	return	(false)	;	//	temp jf
-}
 
 
 extern	int32_t	run_mode;
@@ -588,14 +577,12 @@ void	check_commands	()	{	//	Called from ForeverLoop
 }
 
 
-extern	uint32_t	can_errors;
+//extern	uint32_t	can_errors;
 extern	void	rtc_buggery	()	;
 extern	void	adc_cnt_report	()	;
 
 bool	adc_cmd	 (struct parameters & par)     {
-//#ifdef	USING_ANALOG
 	adc_cnt_report();
-//#endif
 	return	(true);
 }
 
@@ -617,26 +604,7 @@ bool	rtc_cmd	 (struct parameters & par)     {
 	rtc_buggery();
 	return	(true);
 }
-
-
-#else
-//bool	st_cmd	 (struct parameters & par)     {
-//	return	(false);
-//}
-
-
-//bool	sd_cmd	 (struct parameters & par)     {
-//	return	(false);
-//}
-
-
-//bool	rtc_cmd	 (struct parameters & par)     {
-//	return	(false);
-//}
-
-
 #endif
-
 
 
 

@@ -24,8 +24,8 @@ extern	UART_HandleTypeDef	huart2;	//	uarts used in this project
 //Serial				pc(PC_UART, 500);		//
 //Serial				bt(BT_UART, 100);		//
 
-Serial				pc(huart1, 1000, 500);		//
-Serial				bt(huart2, 400, 400);		//
+Serial				pc(huart1, 1500, 750);		//
+Serial				bt(huart2, 500, 500);		//
 
 //	This is the Bluetooth Hand Controller with 320x480 Graphic Touch Screen
 
