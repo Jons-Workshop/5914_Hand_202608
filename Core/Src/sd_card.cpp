@@ -17,7 +17,7 @@ extern	SPI_HandleTypeDef hspi1;
 extern	Serial	pc;
 
 //char SDTxBuffer[250];
-char	FileName[32];	//	Each time prog runs a new .csv file is created. This holds its name.
+char	TodaysLogFileName[32] { 0 }	;	//	Each time prog runs a new .csv file is created. This holds its name.
 int	len;
 
 //extern	"C"	{
@@ -36,18 +36,18 @@ int	len;
 FATFS 	FatFs;
 FRESULT FR_Status;	//	Integer 0 to 19
 
-#define	FILE_BUFF_SIZE	2000
-#define	WRITE_TRIG_SIZE	1500	//	trigger file write when buffer contains this many or more
+#define	FILE_BUFF_SIZE	2500
+#define	WRITE_TRIG_SIZE	2000	//	trigger file write when buffer contains this many or more
 FRESULT	log_a_block	(const char * local_file_name, const char * txt)	;
 
 	//	Assumes all file content is text and only usable on one file
 
 void	bollocks	(const char * file_name, const char * to_add, bool immediate)	{	//	immediate flag used to force real file write
 	static	int	onptr	{ 0 }	;
-	char	t[64];
+	char	t[128];
 	int	tmp;
 	static uint32_t	time;
-	static	char	bigbuff[FILE_BUFF_SIZE];	//	consolidate many small write chunks into one larger blob for actual writes to file
+	static	char	bigbuff[FILE_BUFF_SIZE+4];	//	consolidate many small write chunks into one larger blob for actual writes to file
 	//	Assume here with fresh text to put on file queue
 	tmp = strlen	(to_add);
 	if	((onptr + tmp) < FILE_BUFF_SIZE)	{	//	will fit on buffer
@@ -61,11 +61,12 @@ void	bollocks	(const char * file_name, const char * to_add, bool immediate)	{	//
 	}
 	if	((immediate) || (onptr >= WRITE_TRIG_SIZE))	{	//	write block to file
 		time = uwTick;
-		tmp = log_a_block	(file_name, bigbuff);
+		tmp = log_a_block	(file_name, bigbuff);	//	Does log_a_block terminate on '\n' ?
 		if	(tmp != FR_OK)
 			pc.write	("bollocks fail\r\n", 15);
 		else	{
-			tmp = sprintf	(t, "bollocks saving %d to file, %ld ms\r\n", onptr, uwTick - time);
+//			tmp = sprintf	(t, "bollocks saving %d to file[%s], %ld ms\r\n", onptr, TodaysLogFileName, uwTick - time);
+			tmp = sprintf	(t, "bollocks saving %d to file[%s], %ld ms\r\n", onptr, file_name, uwTick - time);
 			pc.write	(t, tmp);
 		}
 		onptr = 0;
@@ -195,12 +196,12 @@ void	get_file_n	(int const n)	{	//	get nth file in directory listing
 
 
 FRESULT	log_a_block	(const char * local_file_name, const char * txt)	{
-	constexpr	char	junk[] = ",37.2,17368,2.05,3500,3500,3500,3500,23,24,27,19\n";	//	credible garbage for now until we have proper data available
-	const char * p = nullptr;
+//	const char * p = nullptr;
 	char	t[84];
-	int		len;
+	int		len = sprintf	(t, "At log_a_block with [%s], len %d\r\n", local_file_name, strlen(txt));
+	pc.write	(t, len);
 	if	(!local_file_name)	{
-		local_file_name = FileName;	//	globally known name of todays log file
+		local_file_name = TodaysLogFileName;	//	globally known name of todays log file
 	}
 	UINT	WWC;		//	Record of numof bytes written to file
 	FIL 	Fil;		//	File object structure
@@ -233,13 +234,13 @@ FRESULT	log_a_block	(const char * local_file_name, const char * txt)	{
 		return	(FR_Status);
 	}
 	//	write stuff to file here
-	(local_file_name == FileName) ? p = junk : p = txt;
-	FR_Status = f_write(&Fil, p, strlen(p), &WWC);
+
+	FR_Status = f_write(&Fil, txt, strlen(txt), &WWC);
 	if	(FR_Status != FR_OK)	{
 		len = sprintf	(t, "Error (%d) writing file in log_a_block\r\n", FR_Status);
 		pc.write	(t, len);
 	}
-//		len = sprintf	(t, "Adding (%d) to %s of size %ld\r\n", WWC, FileName, f_size(&Fil));
+//		len = sprintf	(t, "Adding (%d) to %s of size %ld\r\n", WWC, TodaysLogFileName, f_size(&Fil));
 //		pc.write	(t, len);
 	FR_Status = f_close(&Fil);
 	f_mount	(NULL, "", 0);
@@ -390,7 +391,7 @@ char *	createfilename	(char * dest)	{	//	Filename is YearMonthDate-HourMinSec.lo
 }
 
 
-FRESULT	new_csv_file	()	{	//	Picks up global FileName
+FRESULT	new_csv_file	()	{	//	Picks up global TodaysLogFileName
 //now global		FATFS		FatFs;			//	File system object structure
 //now global		FRESULT 	FR_Status;		//	Integer 0 to 19
 	FIL 		Fil;			//	File object structure
@@ -407,7 +408,7 @@ FRESULT	new_csv_file	()	{	//	Picks up global FileName
 	    }
 //	    len = sprintf(SDTxBuffer, "SD Card Mounted Successfully! \r\n\n");
 //	    pc.write	(SDTxBuffer, len);
-	    FR_Status = f_open(&Fil, FileName, FA_WRITE | FA_READ | FA_CREATE_ALWAYS);
+	    FR_Status = f_open(&Fil, TodaysLogFileName, FA_WRITE | FA_READ | FA_CREATE_ALWAYS);
 	    if(FR_Status != FR_OK)
 	    {
 			len = sprintf(t, "Error! While Creating/Opening A New Txt File, Code: (%i)\r\n", FR_Status);

@@ -642,6 +642,7 @@ public:
 extern	char * get_time	(char * dest)	;	//	get e.g. "16:50:11"
 extern	int	log_a_block	(const char * local_filename, const char * txt)	;
 extern	int	bollocks	(const char * local_filename, const char * txt, bool)	;
+extern	char	TodaysLogFileName[] ;	//	Each time prog runs a new .csv file is created. This holds its name.
 
 void	draw_clock	()	{
 	char	t[16];
@@ -658,7 +659,8 @@ void	draw_clock	()	{
 	strcat	(t, "\r\n");
 	LCD_CS_INACTIVE;
 //	log_a_block	(nullptr, t);
-	bollocks	("Bollocks.txt", t, false);
+//	bollocks	("Bollocks.txt", t, false);
+	bollocks	(TodaysLogFileName, t, false);
 	LCD_CS_ACTIVE;
 }
 

@@ -33,7 +33,7 @@ LSClass	Loco_State 			= LSClass::Power_On;		//	Power-on default
 LSClass	Loco_Direction 		= LSClass::Park;			//	When driving is 'Forward' or 'Reverse'. Other states 'Drift' and 'Park'
 
 //char	FileName[32];	//	Each time prog runs a new .csv file is created. This holds its name.
-extern	char 	FileName[32];	//	in sd_card.cpp
+extern	char 	TodaysLogFileName[32];	//	in sd_card.cpp
 
 extern	uint32_t	touch_time;
 extern	uint32_t	forever_loop_timer;
@@ -292,9 +292,10 @@ extern "C" void	ForeverLoop	()	{	// Jumps to here from 'main.c'
 	len = sprintf	(t, ", Chip ID 0x%2x\r\n", My_ID.get_ID8());
 	pc.write	(t, len);
 
-	createfilename	(FileName);	//	get e.g. "20260804-124516" - file created date and time is the filename.csv
-	pc.write	(FileName, strlen(FileName));
+	createfilename	(TodaysLogFileName);	//	get e.g. "20260804-124516" - file created date and time is the filename.csv
+	pc.write	(TodaysLogFileName, strlen(TodaysLogFileName));
 	pc.write	(" is the new filename\r\n", 22);
+	pc.tx_any_buffered();
 
 	new_csv_file	();
 //	transmit_file	((char*)"Log.txt");

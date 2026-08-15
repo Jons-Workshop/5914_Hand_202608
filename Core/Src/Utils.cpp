@@ -18,7 +18,7 @@
 #include	"Serial.hpp"
 #include	"CmdLine.hpp"
 
-extern	Serial	pc	;
+extern	Serial	pc	;	//	Created in ForeverLoop.cpp
 extern	Serial	bt	;
 
 //extern	double	read_knob	()	;
@@ -42,8 +42,8 @@ bool	set_one_wrapper_cmd	(parameters &);
 
 struct cli_menu_entry_set	const  settings_data[]
 {    // Can not form pointers to member functions.
-	{"?",     	"Lists all user settings, alters none", null_cmd, static_cast<int32_t>(MenuType::SETTINGS)}, //	Examples of use follow
-	{"defaults","Reset settings to factory defaults", set_defaults_cmd},     //	restore factory defaults to all settings
+	{"?",     	"List user settings, alters none", null_cmd, static_cast<int32_t>(MenuType::SETTINGS)}, //	Examples of use follow
+	{"defaults","Set to factory defaults", set_defaults_cmd},     //	restore factory defaults to all settings
 	{"mca",		"My CAN Address", 		set_one_wrapper_cmd, 	0, 0x7ff, 6, 1.0},   //
 	{nullptr},	//	June 2023 new end of list delimiter. No need to pass sizeof
 }	;
@@ -76,19 +76,19 @@ List of commands accepted from external pc through non-opto isolated com port 11
 struct  cli_menu_entry_set	const pc_command_list[] = {
     {"?", "Lists available commands", 	menucmd, static_cast<int32_t>(MenuType::MENU)},
 	{"ping", "Received a 'ping'. Update local ping count", ping_cmd},
-	{"getvb", "Received a 'ping'. Update local ping count", getvb_cmd},
-	{"rtc", "Read the real time clock", 	rtc_cmd},
+	{"getvb", "?vb\r", getvb_cmd},	//	sends "?vb\r" over bluetooth
+	{"rtc", "Read the RTC", 	rtc_cmd},
 	{"adc", "check adc dma working", 	adc_cmd},
-	{"st", "Set real time clock Time", 		st_cmd},
-	{"sd", "Set real time clock Date", 		sd_cmd},
+	{"st", "Set RTC Time", 		st_cmd},
+	{"sd", "Set RTC Date", 		sd_cmd},
 	{"md", "Make directory", 		make_dir_cmd},
 	{"dir", "File Directory", 			dir_cmd},
-	{"bril", "Display brightness 0-99", bril_cmd},		//	New July 2026
+	{"bril", "Disp brightness 0-99", bril_cmd},		//	New July 2026
 	{"us", "user settings", 			edit_settings_cmd},
 	{"file", "get text file", 			get_file_cmd},
 	{"del", "Delete file", 		del_file_cmd},
 	{"wav", "look into .wav file", 		wav_cmd},
-	{"odo", "testing odo code", 		odo_cmd},
+	{"odo", "test odo code", 		odo_cmd},
     {"nu", "do nothing", null_cmd},
     {nullptr},	//	June 2023 new end of list delimiter. No need to pass sizeof
 }   ;
@@ -96,6 +96,7 @@ struct  cli_menu_entry_set	const pc_command_list[] = {
 
 
 bool	got_vis_response	(parameters &);
+bool	got_log_response	(parameters & par);
 bool	got_vb_response	(parameters &);
 bool	got_speed_response	(parameters & par)	;
 bool	got_motorspeeds_response	(parameters & par)	;
@@ -128,6 +129,7 @@ struct  cli_menu_entry_set	const bluetooth_commands[] = {
 //	{"adc", "check adc dma working", 	adc_cmd},
 	{"us", "user settings", 			edit_settings_cmd},
 	{"vis", "got response to '?vis'", got_vis_response},
+	{"log", "got response to '?log'", got_log_response},
 	{"vb", "got response to '?vb'", got_vb_response},
 	{"s", "got response to '?s'", got_speed_response},
 	{"m", "got response to '?m'", got_motorspeeds_response},
@@ -287,6 +289,19 @@ bool	del_file_cmd	(parameters & par)	{	//	also works to delete directories
 extern	float	V_Loco_Batt;
 extern	float	I_Loco_Batt;
 extern	float	Loco_Speed;
+
+/**	bool	got_log_response	(parameters & par)	{
+ *
+ * Hand controller issues "?log\r" request to Loco Controller.
+ * Loco Controller responds, if connected, with "log 1 2 3 4 5" variable length list of measurements to be logged.
+ *
+ */
+bool	got_log_response	(parameters & par)	{	//	Read parameters and convert to comma-delimitted text list to file
+	uint32_t	numof = par.numof_floats;
+	return	(true);
+}
+
+
 
 bool	got_vis_response	(parameters & par)	{
 //	char	t[64];
