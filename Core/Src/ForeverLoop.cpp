@@ -137,7 +137,7 @@ void	Loco_State_Machine	()	{	//	called twice per sec MOVE THIS INTO foreverloop
 
 
 //constexpr	char	const	version_str[] = "Info About Project Here," __DATE__;
-constexpr	char	const	version_str[] = "Bluetooth_Hand_Controller_202607, Jon Freeman B Eng (Hons) MIET, " __DATE__;
+constexpr	char	const	version_str[] = "Bluetooth_Hand_Controller_202608, Jon Freeman B Eng (Hons) MIET, " __DATE__;
 const 	char * 	get_version	()	{	//	Makes above available throughout code.
 	return	(version_str);
 }
