@@ -8,9 +8,9 @@
 #include "fatfs.h"
 #include "Serial.hpp"
 #include <stdbool.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
+#include <cstdio>
+#include <cctype>
+#include <cstring>
 #include	"ProjectLocoHC.hpp"
 
 extern	SPI_HandleTypeDef hspi1;
@@ -74,6 +74,9 @@ void	bollocks	(const char * file_name, const char * to_add, bool immediate)	{	//
 }
 
 
+/**		int files_dir (char * selected_file_name, const int * selected_file_number)	//
+ * 		List files in this directory
+ */
 int files_dir (char * selected_file_name, const int * selected_file_number)	//
 {
 //    global FATFS fs;
@@ -83,9 +86,7 @@ int files_dir (char * selected_file_name, const int * selected_file_number)	//
     int	FileNumber = 0;
     DIR	MyDir;
 	static	FILINFO	MyFileinfo;
-//	bool	delete_file = ((selected_file_name == nullptr) && (selected_file_number == nullptr));
 
-//	if	(delete_file)
 	LCD_CS_INACTIVE;
 
     FR_Status = f_mount(&FatFs, "", 1);
@@ -105,7 +106,7 @@ int files_dir (char * selected_file_name, const int * selected_file_number)	//
 		if	((nullptr != selected_file_name) && (*selected_file_number == FileNumber))
 			strcpy	(selected_file_name, MyFileinfo.fname);
 		len = sprintf	(buff, "%d\t%s\tsize %ld\tattrib %d\r\n", FileNumber++, MyFileinfo.fname, MyFileinfo.fsize, MyFileinfo.fattrib);
-		while	(!pc.write	(buff, len))	//	use txbuff to max capacity if need be
+		while	(!pc.write	(buff, len))	//	use txbuff to max capacity if need be. write copies none and fails when insufficient space
 			pc.tx_any_buffered();
 //		MyFileinfo.fdate = 1234;
 //		HAL_Delay	(2);	//	chance for com port to catch up
@@ -248,7 +249,7 @@ FRESULT	log_a_block	(const char * local_file_name, const char * txt)	{
 	return	(FR_Status);
 }
 
-
+#if 0
 //static void SD_Card_Test(void)
 void SD_Card_Test(void)
 {
@@ -370,10 +371,10 @@ void SD_Card_Test(void)
 //  set_spi_prsc	(SPI_PRSC_LCD);	//	max speed for lcd
 //  HAL_Delay	(5000);
 }
-
+#endif
 
 extern	int32_t	get_date	()	;	//	return binary. From Hi to Lo bytes - 0x00, Year, Month, Date
-extern	RTC_HandleTypeDef hrtc;	//	RTC Real Time Clock
+extern	RTC_HandleTypeDef hrtc;		//	RTC Real Time Clock
 
 char *	get_date_delim_time	(char * dest, char * delim)	{
 	RTC_TimeTypeDef	rtc_time;
@@ -384,6 +385,7 @@ char *	get_date_delim_time	(char * dest, char * delim)	{
 	return	(dest);
 }
 
+
 char *	createfilename	(char * dest)	{	//	Filename is YearMonthDate-HourMinSec.log
 	get_date_delim_time	((char*)dest, (char*)"-");
 	strcat	(dest, ".log");
@@ -391,30 +393,26 @@ char *	createfilename	(char * dest)	{	//	Filename is YearMonthDate-HourMinSec.lo
 }
 
 
-FRESULT	new_csv_file	()	{	//	Picks up global TodaysLogFileName
-//now global		FATFS		FatFs;			//	File system object structure
-//now global		FRESULT 	FR_Status;		//	Integer 0 to 19
+FRESULT	make_new_log_file	(const char * new_file_name)	{	//	Picks up global TodaysLogFileName
 	FIL 		Fil;			//	File object structure
-	char	t[64];
-	int		len;
-	pc.write	("In new_csv_file ", 16);
 	do	{
 	    FR_Status = f_mount(&FatFs, "", 1);
 	    if (FR_Status != FR_OK)
-	    {
-			len = sprintf(t, "Error! While Mounting SD Card: (%i)\r\n", FR_Status);
-			pc.write	(t, len);
+//	    {
+//			len = sprintf(t, "Error! While Mounting SD Card: (%i)\r\n", FR_Status);
+//			pc.write	(t, len);
 			break;
-	    }
+//	    }
 //	    len = sprintf(SDTxBuffer, "SD Card Mounted Successfully! \r\n\n");
 //	    pc.write	(SDTxBuffer, len);
-	    FR_Status = f_open(&Fil, TodaysLogFileName, FA_WRITE | FA_READ | FA_CREATE_ALWAYS);
+//	    FR_Status = f_open(&Fil, TodaysLogFileName, FA_WRITE | FA_READ | FA_CREATE_ALWAYS);
+	    FR_Status = f_open(&Fil, new_file_name, FA_WRITE | FA_READ | FA_CREATE_ALWAYS);
 	    if(FR_Status != FR_OK)
-	    {
-			len = sprintf(t, "Error! While Creating/Opening A New Txt File, Code: (%i)\r\n", FR_Status);
-			pc.write	(t, len);
+//	    {
+//			len = sprintf(t, "Error! While Creating/Opening A New Txt File, Code: (%i)\r\n", FR_Status);
+//			pc.write	(t, len);
 			break;
-	    }
+//	    }
 //	    len = sprintf(SDTxBuffer, "Text File Created & Opened! Writing Data To The .csv File..\r\n\n");
 //	    pc.write	(SDTxBuffer, len);
 	    // (1) Write Data To The Text File [ Using f_puts() Function ]
@@ -427,13 +425,13 @@ FRESULT	new_csv_file	()	{	//	Picks up global TodaysLogFileName
 
 	}	while	(0);
 	FR_Status = f_mount(NULL, "", 0);
-	if (FR_Status != FR_OK)
-	{
-		len = sprintf(t, "Error! While Un-mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-	} else	{
-		len = sprintf(t, "SD Card Un-mounted Successfully! \r\n");
-	}
-	pc.write	(t, len);
+//	if (FR_Status != FR_OK)
+//	{
+//		len = sprintf(t, "Error! While Un-mounting SD Card, Error Code: (%i)\r\n", FR_Status);
+//	} else	{
+//		len = sprintf(t, "SD Card Un-mounted Successfully! \r\n");
+//	}
+//	pc.write	(t, len);
 	return	(FR_Status);
 }
 
@@ -524,14 +522,13 @@ int	open_wav	(char * wavname)	{
 
 
 FRESULT	get_odometer_distance	(uint32_t & odo_reading)	{	//	Read most recent odometer uint32_t from file
-//now global		FATFS		FatFs;			//	File system object structure
-//now global		FRESULT 	FR_Status = FR_OK;		//	Integer 0 to 19
-
+#define	LOOK_BACK_DISTANCE	200
 	FIL		Fil;			//	File object structure
-	char	t[122];
-	char	buff[110]	{ 0 }	;
-	int		len;
+	char	t[LOOK_BACK_DISTANCE + 12];
+	char	u[32];
+	int32_t	len;
 	int32_t	fsize;
+	int32_t	read_position;
 	bool	gotnumstart	{ false }	;
 	UINT	RRC { 0 }	;	//	for byte count read from file
 	//	Open file "odometer.csv" for read.
@@ -548,31 +545,33 @@ FRESULT	get_odometer_distance	(uint32_t & odo_reading)	{	//	Read most recent odo
 	    	pc.write	(t, len);
     		break;
 	    }
-		len = sprintf	(t, "\n\nOpened file for read, size %ld\r\n", f_size(&Fil));
+		len = sprintf	(t, "\nOpened [odometer.csv] for read, size %ld\r\n", f_size(&Fil));
 		pc.write	(t, len);
-		fsize = f_size(&Fil) - 100;
-		if	(fsize < 0)
-			fsize = 0;
-		f_lseek	(&Fil, fsize);	//	look back to last 100 chars of file
-	    FR_Status = f_read (&Fil, buff, fsize, &RRC);			/* Read data from the file */
-	    pc.write	(buff, strlen(buff));
+		fsize = f_size(&Fil);	//	bytes in file
+		if	(fsize <= LOOK_BACK_DISTANCE)
+			read_position = 0;
+		else
+			read_position = fsize - LOOK_BACK_DISTANCE;
+
+		f_lseek	(&Fil, read_position);	//	look back to last 100 chars of file
+	    FR_Status = f_read (&Fil, t, LOOK_BACK_DISTANCE, &RRC);			/* Read data from the file */
+	    len = sprintf	(u, "Read %d from file, {{", RRC);
+	    pc.write	(u, len);
+	    pc.write	(t, RRC);
+	    pc.write	("}}\r\n", 4);
 	    f_close	(&Fil);
 	    f_mount	(NULL, "", 0);
-	    odo_reading = 0;
+	    odo_reading = 0;	//	default result stored
 
-	    while	(!gotnumstart)	{
-	    	if	((RRC > 0) && (isdigit(buff[RRC])) && ('\n' == buff[RRC-1]))	{
+	    while	(--RRC && !gotnumstart)	{
+	    	if	((RRC > 0) && (isdigit(t[RRC])) && ('\n' == t[RRC-1]))	{
 	    		gotnumstart = true;
-	    		odo_reading = atol	(buff + RRC);
+	    		odo_reading = atol	(t + RRC);
 	    	}
-	    	else
-	    		RRC -= 1;
-	    	if	(RRC == 0)
-	    		break;
 	    }
 
-//	    len = sprintf	(t, "Extracted [%ld]\r\n", odo_reading);
-//	    pc.write	(t, len);	//	Yes, it works.
+	    len = sprintf	(t, "Extracted [%ld]\r\n", odo_reading);
+	    pc.write	(t, len);	//	Yes, it works.
 
 	}	while	(0);
 	return	(FR_Status);
@@ -580,27 +579,33 @@ FRESULT	get_odometer_distance	(uint32_t & odo_reading)	{	//	Read most recent odo
 
 
 
-FRESULT	set_odometer_rtc	(char * t)	{	//	Set odometer Date and Time only
-	get_date_delim_time	(t + 1, (char*)",");						//	To send ",20261122,103027"
+FRESULT	set_odometer_rtc	()	{	//	Set odometer Date and Time only
+	char 	t[32] { 0 };
 	t[0] = ',';
+	get_date_delim_time	(t + 1, (char*)",");						//	To send ",20261122,103027"
 	strcat	(t, "\n");
+	pc.write	("[", 1);
+	pc.write	(t, strlen(t));
+	pc.write	("]\r\n", 3);
 	return	(log_a_block((char*)"odometer.csv", (char*)t));
 }
 
 
 FRESULT	set_odometer_distance_only	(uint32_t	new_odo_total)	{	//	Set odometer distance only to absolute 'new_odo_total'
-	char 	t[16];
+	char 	t[24] { 0 };
 	sprintf	(t, "%ld\n", new_odo_total);						//	To send "123456789\n"
 	return	(log_a_block((char*)"odometer.csv", (char*)t));
 }
 
 
-FRESULT	set_odometer_all	(uint32_t	new_odo_total)	{	//	Set odometer Distance, Date, Time, and distance to absolute 'new_odo_total'
+/*FRESULT	set_odometer_all	(uint32_t	new_odo_total)	{	//	Set odometer Distance, Date, Time, and distance to absolute 'new_odo_total'
 	char	t[32];
 	int		pos = sprintf	(t, "%ld", new_odo_total);
-	set_odometer_rtc	(t + pos);
+	*(t + pos) = ',';
+	get_date_delim_time	(t + pos + 1, (char*)",");						//	To send ",20261122,103027"
+	strcat	(t + pos, "\n");
 	return	(log_a_block((char*)"odometer.csv", (char*)t));
-}
+}*/
 
 
 bool	clr_odometer	()	{	//	Delete odometer file, replace with single line new file with distance zero
@@ -620,15 +625,16 @@ extern	int	odo_bugger	(uint32_t dist)	{	//	Call from Utils to test odometer func
 	FRESULT	r1, r2, r3, r4;
 	static uint32_t	t0, t1, t2, t3, t4;
 	t0 = uwTick;
-	r1 = set_odometer_all			(dist);
+//	r1 = set_odometer_all			(dist);
 	t1 = uwTick - t0;
 	r2 = set_odometer_distance_only	(dist);
 	t2 = uwTick - t0;
 ////	r2 = set_odometer_distance_only	(dist + 13);
-	r3 = set_odometer_rtc			(t);
+//	r3 = set_odometer_rtc			();
 	t3 = uwTick - t0;
 	r4 = get_odometer_distance		(d);
 	t4 = uwTick - t0;
+//	HAL_Delay	(5);
 	int	len = sprintf	(t, "In odo_bugger, get_odometer_distance found %ld, %ld, %ld, %ld, %ld\r\n", t1, t2, t3, t4, d);
 	pc.write	(t, len);
 	return	(0);

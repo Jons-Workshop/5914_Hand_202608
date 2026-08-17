@@ -21,19 +21,18 @@
 extern	UART_HandleTypeDef	huart1;	//	uarts used in this project
 extern	UART_HandleTypeDef	huart2;	//	uarts used in this project
 
-//Serial				pc(PC_UART, 500);		//
-//Serial				bt(BT_UART, 100);		//
-
-Serial				pc(huart1, 1500, 750);		//
-Serial				bt(huart2, 500, 500);		//
+Serial				pc	{huart1, 500, 750}	;		//	which uart, tx buff size, rx buff size
+Serial				bt	{huart2, 500, 500}	;		//
 
 //	This is the Bluetooth Hand Controller with 320x480 Graphic Touch Screen
 
 LSClass	Loco_State 			= LSClass::Power_On;		//	Power-on default
 LSClass	Loco_Direction 		= LSClass::Park;			//	When driving is 'Forward' or 'Reverse'. Other states 'Drift' and 'Park'
 
-//char	FileName[32];	//	Each time prog runs a new .csv file is created. This holds its name.
-extern	char 	TodaysLogFileName[32];	//	in sd_card.cpp
+//char	TodaysLogFileName[32];			//	Each time prog runs a new .csv file is created. This holds its name.
+extern	char 	TodaysLogFileName[];	//	in sd_card.cpp
+extern	int	set_odometer_rtc	()	;	//	Set odometer Date and Time only
+extern	int	get_odometer_distance	(uint32_t & odo_reading)	;	//	Read most recent odometer uint32_t from file
 
 extern	uint32_t	touch_time;
 extern	uint32_t	forever_loop_timer;
@@ -47,7 +46,7 @@ extern	uint32_t	exti_cnt;
 extern	float		V_Loco_Batt;
 extern	float		V_HC_Batt;
 
-extern	bool	ticked	()	;
+extern	bool	ticked	()	;	//	Returns true if a SysTick has occurred since last call to ticked()
 extern	void	motor_speed_bars	(float * norm_src)	;	//	normalised (0.0-1.0) values brought in array of floats
 extern	void	check_commands	()	;	//	Called from ForeverLoop
 
@@ -79,7 +78,6 @@ extern	"C"	{
 }
 
 extern	void SD_Card_Test(void);
-extern	int	log_a_block	(char * txt)	;
 
 bool	set_Loco_Direction	(LSClass	new_state)	{
 	switch	(new_state)	{
@@ -137,7 +135,7 @@ void	Loco_State_Machine	()	{	//	called twice per sec MOVE THIS INTO foreverloop
 
 
 //constexpr	char	const	version_str[] = "Info About Project Here," __DATE__;
-constexpr	char	const	version_str[] = "Bluetooth_Hand_Controller_202608, Jon Freeman B Eng (Hons) MIET, " __DATE__;
+constexpr	char	const	version_str[] = "5914 Bluetooth_Hand_Controller_202608, Jon Freeman B Eng (Hons) MIET, " __DATE__;
 const 	char * 	get_version	()	{	//	Makes above available throughout code.
 	return	(version_str);
 }
@@ -152,9 +150,9 @@ class	my_ID_class	{	//	Read unique STM32 die ident	SAME as in EMC26 code
 			((READ_REG(*((uint32_t *)(UID_BASE + 1)))) >> 8) 	+
 			((READ_REG(*((uint32_t *)(UID_BASE + 1)))) >> 16) 	+
 			((READ_REG(*((uint32_t *)(UID_BASE + 1)))) >> 24) 	+
-((READ_REG(*((uint32_t *)(UID_BASE + 2)))) >> 8) 	+
+			((READ_REG(*((uint32_t *)(UID_BASE + 2)))) >> 8) 	+
 			((READ_REG(*((uint32_t *)(UID_BASE + 2)))) >> 16) 	+
-						READ_REG(*((uint32_t *)(UID_BASE + 2))) 			+
+			READ_REG(*((uint32_t *)(UID_BASE + 2))) 			+
 			((READ_REG(*((uint32_t *)(UID_BASE + 2)))) >> 24))  ;	//	8 bit sum of 12 bytes
 public:
 
@@ -220,8 +218,6 @@ const char * atptr[] = {
 */
 
 /**
- * :98D3:31:F710E7	Controller_5914
- * 98D3:21:F83B02	Loco_5914
  *
  *	cmode 1 connect any address
  *
@@ -269,47 +265,72 @@ void	bril	(uint16_t b)	{	//	Useful range 99 - 990
 
 extern	void	draw_clock	()	;
 extern	int	new_csv_file	()	;	//	Picks up global FileName
+extern	int	make_new_log_file	(const char *)	;	//	Picks up global FileName
 extern	int	transmit_file	(char * fname)	;
 extern	void	get_file_n	(int n)	;
 
 //	This is the Bluetooth Hand Controller with 320x480 Graphic Touch Screen and SD card
 
+uint32_t	global_odometer	{ 0L }	;
+bool		sd_card_good	{ false }	;
+
+
 extern "C" void	ForeverLoop	()	{	// Jumps to here from 'main.c'
 	char	t[164];
 	size_t	len;
+	int		rv;
 	uint32_t	qtrseccnt	{ 0L }	;
 	uint32_t	seconds		{ 0L }	;
 	uint32_t	dimtime_sec	{ BRIGHT_TIME_SECS }	;	//	two minutes
+	uint32_t	tmp	;
 	bool		bright_display	{ true }	;
 	LSClass	state = LSClass::Power_On;
 	bool	local_connected = false;
 
 	POWER_ON;
+
 	pc.start_rx();
 	bt.start_rx();
 	pc.write	("\r\n\n\n", 4);
 	pc.write	(get_version(), strlen(get_version()));
 	len = sprintf	(t, ", Chip ID 0x%2x\r\n", My_ID.get_ID8());
 	pc.write	(t, len);
-
-	createfilename	(TodaysLogFileName);	//	get e.g. "20260804-124516" - file created date and time is the filename.csv
-	pc.write	(TodaysLogFileName, strlen(TodaysLogFileName));
-	pc.write	(" is the new filename\r\n", 22);
-	pc.tx_any_buffered();
-
-	new_csv_file	();
-//	transmit_file	((char*)"Log.txt");
-
 	start_ADC	();		//	Continuous ping pong buffering. Reads battery voltage
 	draw_setup_screen	()	;	//	assumes no bluetooth connection yet
 
-	SD_Card_Test();
 
-	get_file_n	(47);
+	createfilename	(TodaysLogFileName);	//	get e.g. "20260804-124516" - file created date and time is the filename.csv
+	pc.write	(TodaysLogFileName, strlen(TodaysLogFileName));
+	pc.write	(" is the new log filename\r\n", 22);
+	pc.tx_any_buffered();
+	rv = make_new_log_file	(TodaysLogFileName);
+	if	(rv == 0)	{			//	Believe SD card working
+		sd_card_good = true;
+		len = sprintf	(t, "Created log file [%s]\r\n", TodaysLogFileName);
+		pc.write	(t, len);
+		int odo = set_odometer_rtc	();			//	put date and time ",20260816,122436\n" in odometer file
+		len = sprintf	(t, "set_odometer_rtc retd %d\r\n", odo);	//	returns FR_OK (0) or not
+		pc.write	(t, len);
+		odo	= get_odometer_distance	(global_odometer)	;	//	Read most recent odometer uint32_t from file
+		len = sprintf	(t, "get_odometer_distance fn retd %d, distance [%ld]\r\n", odo, global_odometer);
+		pc.write	(t, len);
+	}
+	else	{
+		len = sprintf	(t, "make_new_log_file FAILED %d\r\n", rv);
+		pc.write	(t, len);
+	}
+
+//	transmit_file	((char*)"Log.txt");
+
+
+//	SD_Card_Test();
+
+//	get_file_n	(47);
+
 
 	HAL_GPIO_WritePin(TP_RST_GPIO_Port, TP_RST_Pin, GPIO_PIN_SET);	//	Release touch screen reset
 
-	while	(true)	{
+	while	(true)	{	//	always. Head of forever loop.
 		if	(ticked())	{
 			adc_updates	();		//	check this once per millisec
 
@@ -328,6 +349,16 @@ extern "C" void	ForeverLoop	()	{	// Jumps to here from 'main.c'
 					if	((seconds % 3) == 0)	{	//	every three secs stuff
 						V_HC_Batt = get_supply_voltage();				//	Read voltage of local hand controller battery
 						hh_batt_display_update	(V_HC_Batt);
+						if	((tmp = pc.test_error(0xffffffff)) != 0)	{
+							len = sprintf	(t, "pc errors %08lx\r\n", tmp);
+							pc.write	(t, len);
+							pc.clear_error(2);	//	This is 'overrun' that gets set when trying to write too much. No data written when attempting overrun
+							pc.report_error();
+						}
+						if	((tmp = bt.test_error(0xffffffff)) != 0)	{
+							len = sprintf	(t, "bt errors %08lx\r\n", tmp);
+							pc.write	(t, len);
+						}
 					}
 				}
 

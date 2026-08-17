@@ -2,7 +2,7 @@
  * Utils.cpp	INTENDED TO BE PROJECT SPECIFIC
  *
  *  Created on: Feb 11, 2024
- *      Author: Jon Freeman  B. Eng. Hons
+ *      Author: Jon Freeman  B. Eng. Hons MIET
  *
  *	For menus, and functions executed through menus.
  *	Put such clutter here,
@@ -13,7 +13,7 @@
 
 #include	<cstdio>			//	for sprintf
 #include	<cstring>			//	for strlen
-#include	<ctype.h>			//	for isspace
+#include	<cctype>			//	for isspace
 
 #include	"parameters.hpp"
 #include	"Serial.hpp"
@@ -28,18 +28,7 @@ extern	Serial	bt	;
 extern	char * get_time	(char * dest)	;	//	get e.g. "16:50:11"
 
 
-//	Prototypes for functions included in 'settings_data' menu structure
-bool	null_cmd	(parameters &);
-bool	set_defaults_cmd	(parameters &);
-bool	set_one_wrapper_cmd	(parameters &);
-
 //enum	class	MenuType	{MENU, SETTINGS}	;	//	in 'parameters.hpp'
-/*bool	ver_cmd	(parameters & par)	{
-	char * p = get_version();
-	pc.write	(p, strlen(p));
-	pc.write	("\r\n", 2);
-	return	(true);
-}*/
 
 /*struct cli_menu_entry_set	const  settings_data[]	NO USER SETTINGS
 {    // Can not form pointers to member functions.
@@ -58,7 +47,6 @@ bool	adc_cmd	(parameters &);
 bool	st_cmd	(parameters &);
 bool	sd_cmd	(parameters &);
 bool	bril_cmd	(parameters &);
-//bool	grow_file_cmd	(parameters &);
 bool	get_file_cmd	(parameters &);
 bool	del_file_cmd	(parameters &);
 bool	dir_cmd			(parameters &);
@@ -68,34 +56,31 @@ bool	odo_cmd	(parameters & par)	;
 bool	got_log_response	(parameters & par);
 
 
-//#if 0
 /**
 struct  cli_menu_entry_set      const loco_command_list[] = {
-List of commands accepted from external pc through non-opto isolated com port 115200, 8,n,1
+List of commands accepted from external pc through com port 115200, 8,n,1
 */
 struct  cli_menu_entry_set	const pc_command_list[] = {
-    {"?", "Lists available commands", 	menucmd, static_cast<int32_t>(MenuType::MENU)},
-	{"ping", "Received a 'ping'. Update local ping count", ping_cmd},
-	{"getvb", "?vb\r", getvb_cmd},	//	sends "?vb\r" over bluetooth
-	{"rtc", "Read the RTC", 	rtc_cmd},
-	{"adc", "check adc dma working", 	adc_cmd},
-	{"st", "Set RTC Time", 		st_cmd},
-	{"sd", "Set RTC Date", 		sd_cmd},
-	{"md", "Make directory", 		make_dir_cmd},
-	{"dir", "File Directory", 			dir_cmd},
-	{"bril", "Disp brightness 0-99", bril_cmd},		//	New July 2026
-	{"file", "get text file", 			get_file_cmd},
-	{"del", "Delete file", 		del_file_cmd},
-	{"wav", "look into .wav file", 		wav_cmd},
-	{"odo", "test odo code", 		odo_cmd},
-	{"logt", "test log code", 		got_log_response},
+    {"?", 		"Lists available commands", 	menucmd, static_cast<int32_t>(MenuType::MENU)},
+	{"ping", 	"Received a 'ping'. Update local ping count", ping_cmd},
+	{"getvb", 	"?vb\r", 					getvb_cmd},	//	sends "?vb\r" over bluetooth
+	{"rtc", 	"Read the RTC", 			rtc_cmd},
+	{"adc", 	"check adc dma working", 	adc_cmd},
+	{"st", 		"Set RTC Time", 			st_cmd},
+	{"sd", 		"Set RTC Date", 			sd_cmd},
+	{"md", 		"Make directory", 			make_dir_cmd},
+	{"dir", 	"File Directory", 			dir_cmd},
+	{"bril", 	"Disp brightness 0-99", 	bril_cmd},		//	New July 2026
+	{"file", 	"get text file", 			get_file_cmd},
+	{"del", 	"Delete file", 				del_file_cmd},
+	{"wav", 	"look into .wav file", 		wav_cmd},
+	{"odo", 	"test odo code", 			odo_cmd},
+	{"logt", 	"test log code", 			got_log_response},
     {nullptr},	//	June 2023 new end of list delimiter. No need to pass sizeof
 }   ;
-//#endif
 
 
 bool	got_vis_response	(parameters &);
-//bool	got_log_response	(parameters & par);
 bool	got_vb_response	(parameters &);
 bool	got_speed_response	(parameters & par)	;
 bool	got_motorspeeds_response	(parameters & par)	;
@@ -125,8 +110,6 @@ struct  cli_menu_entry_set	const bluetooth_loco_interface_commands[] = {
 struct  cli_menu_entry_set	const bluetooth_commands[] = {
     {"?", "Lists available commands", 	menucmd, static_cast<int32_t>(MenuType::MENU)},
 	{"p", "Received a 'ping'. Update local ping count", ping_cmd},
-//	{"adc", "check adc dma working", 	adc_cmd},
-//	{"us", "user settings", 			edit_settings_cmd},
 	{"vis", "got response to '?vis'", got_vis_response},
 	{"log", "got response to '?log'", got_log_response},
 	{"vb", "got response to '?vb'", got_vb_response},
@@ -143,12 +126,12 @@ bool    atb_cmd (struct parameters & par)	;	//
 bool    vi_cmd (struct parameters & par)	;	//
 bool    seton_cmd (struct parameters & par)	;	//
 bool    clroff_cmd (struct parameters & par)	;	//
-bool    i_cmd (struct parameters & par)	;	//
+bool    i_cmd (struct parameters & par)	;		//
 bool    ce_cmd (struct parameters & par)	;	//
 bool    sb_cmd (struct parameters & par)	;	//
 bool    pl_cmd (struct parameters & par)	;	//
-bool	can_report_cmd	(parameters & par)	;
-bool    x_cmd (struct parameters & par)	;	//
+bool	can_report_cmd	(parameters & par)	;	//
+bool    x_cmd (struct parameters & par)	;		//
 
 /**
 struct  cli_menu_entry_set      const loco_command_list[] = {
@@ -196,18 +179,11 @@ extern	int files_dir (char * selected_file_name, const int * selected_file_numbe
 
 bool	dir_cmd	(parameters &)	{
 	int	i = 0;
-	files_dir	(nullptr, &i);
+	files_dir	(nullptr, &i);		//
 //	files_dir	(nullptr, nullptr);
 	return	(true);
 }
 
-
-/*bool	grow_file_cmd	(parameters &)	{
-	char	t[32];
-	log_a_block	(get_time(t));
-	log_a_block((char*)"\r\n");
-	return	(true);
-}*/
 
 extern	void	get_file_n	(int n)	;
 extern	int	make_dir	(char * dirname)	;
