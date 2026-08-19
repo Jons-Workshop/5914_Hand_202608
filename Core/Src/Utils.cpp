@@ -19,8 +19,8 @@
 #include	"Serial.hpp"
 #include	"CmdLine.hpp"
 
-extern	Serial	pc	;	//	Created in ForeverLoop.cpp
-extern	Serial	bt	;
+//extern	Serial	pc	;	//	Formerly Created in ForeverLoop.cpp
+//extern	Serial	bt	;
 
 //extern	double	read_knob	()	;
 //extern	bool	can_node_command	(int node, int command, int data)	;
@@ -171,7 +171,11 @@ extern	I2C_HandleTypeDef 	hi2c1;	//	I2C
 
 //Serial				ctrl(huart1);
 //Serial				pc(huart2);		//, * Com_ptrs[];
-CommandLineHandler	pc_command_line_handler	(pc_command_list, &pc);	//	Nice and clean
+extern	UART_HandleTypeDef	huart1;	//	uarts used in this project
+extern	UART_HandleTypeDef	huart2;	//	uarts used in this project
+Serial				pc	{huart1, 500, 750}	;		//	which uart, tx buff size, rx buff size
+Serial				bt	{huart2, 410, 420}	;		//
+CommandLineHandler	pc_command_line_handler		(pc_command_list, &pc);	//	Nice and clean
 CommandLineHandler	rx_from_bluetooth_handler	(bluetooth_commands, &bt);	//	Nice and clean
 
 extern	int	log_a_block	(char * txt)	;

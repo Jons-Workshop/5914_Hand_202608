@@ -22,7 +22,7 @@ struct  parameters  {   //  Used in serial comms with pc and other controller (e
     uint32_t	position_in_list {0L};
     uint32_t	numof_floats {0L};//, target_unit, numof_menu_items;
     float		flt[MAX_CLI_PARAMS + 1] {0.0};//values read from input line stored here, e.g. "fred 1 2 3.142 -99.5"
-    char		second_word[MAX_2ND_WORD_LEN + 2] {0};	//	used in settings
+//    char		second_word[MAX_2ND_WORD_LEN + 2] {0};	//	used in settings
     const char * command_line {nullptr};	//	to make input command line available to functions
     bool		function_returned;	//	New Jan 2024
     Serial * 	com	;

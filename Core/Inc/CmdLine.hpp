@@ -47,11 +47,13 @@
 class	CommandLineHandler	{
 	  struct parameters par;
 	  struct cli_menu_entry_set const * pcmdlist;
+	  size_t	buff_len;
   public:
 	  CommandLineHandler	(struct cli_menu_entry_set const * pcml, Serial * prt)	{	//	Constructor
 		  par.command_list = pcml;
 		  pcmdlist = pcml;
-		  par.com = prt;
+		  par.com = prt;	//	Aug 2026 - This only used to find sizeof input command line
+		  buff_len = par.com->rx_buffer_size();
 	  }	;
 	  bool	CommandExec	(const char * t)	;
 }	;

@@ -1,6 +1,6 @@
 #pragma once
 /*
- * Serial.hpp  Created on: Jun 13, 2023	-	Update	-	17th August 2026
+ * Serial.hpp  Created on: Jun 13, 2023	-	Update	-	19th August 2026
  *
  *      Author: Jon Freeman  B Eng (Hons) MIET
  *      NOTE This does NOT initialise hardware.
@@ -11,24 +11,26 @@
  *	Use	-		Serial	my_port	(UART_HandleTypeDef &which_port, tx_buffsize, rx_buffsize)	;
  *	e.g.		Serial	pc	{huart2, 3000, 250};
  *
- *      LAST MODIFIED 17th August 2026
+ *      LAST MODIFIED 19th August 2026
  *
 	//	Do NOT call 'start_rx' functions until after 'main ()' has started
  *
  *      Oct 2024
  *      DMA Usage
  *
- *      DMA is useful for Tx as we can give any length to send.
- *      DMA is still useful for Rx where each char is put on circular buffer for us???
- *       ** UPDATE ** Reverted to _IT on Rx due to
+ *      DMA is perfect for Tx as we can give any length to send, doing it by interrupt would mean one interrupt per char
+ *      DMA for Rx? Maybe, but typ looking for random length input with chars arriving at random times
+ *       ** UPDATE ** Reverted to _IT on Rx due to observed problem, which turned out to be dodgy RS232 USB lead
  *      seemingly erratic problems with DMA closing reception
  */
 #ifndef INC_SERIAL_HPP_
 #define INC_SERIAL_HPP_
 
 #include	"main.h"	//	is needed here
+
 #include	<new>		//	needed to handle std::nothrow
 
+#define	USING_RX_DMA	//	Choice between Rx DMA or IT (interrupt). Probably not much to choose - Check DMA enabled in MX
 
 template <class T>	class	CircularBuffer	{	//	Class to manage circular buffer of type T objects
 
@@ -37,32 +39,32 @@ template <class T>	class	CircularBuffer	{	//	Class to manage circular buffer of 
 	bool		full	{ false };
 	size_t		onptr	{ 0L };
 	size_t		offptr	{ 0L };
-	uint32_t	errors	{ 0L };	//	low order bits set by various errors - in progress
+	uint32_t	cberrs	{ 0L };	//	low order bits set by various errors - in progress
 
 public:
 	T	txch ;	//	temp scratch variable
 
 	CircularBuffer	(const size_t size)		//	buffer size is required parameter
 		: buffsize { size }	{
-		buffer = new (std::nothrow) T[buffsize + 2] { 0 }	;
+		buffer = new (std::nothrow) T[buffsize + 2] { 0 }	;	//	allocate memory for buffer of required size
         if (buffer == nullptr) {
-            errors = 1;				//	Flag fatal buffer allocation failure
+        	cberrs = 1;				//	Flag fatal buffer allocation failure
         }
 	}	//	Parameter is buffer size
 
 	~CircularBuffer	()	{	delete buffer;	}   // Destructor
 
-	uint32_t	get_cb_errors	()	{	return	(errors);	}
+	uint32_t	get_cb_errors	() const	{	return	(cberrs);	}
 
 
-	void	clr_errors	()	{	errors = 0;	}
+	void	clr_errors	()	{	cberrs = 0;	}
 
 
-	bool	empty	()	{	return	(!full && (onptr == offptr));	}
+	bool	empty	() const	{	return	(!full && (onptr == offptr));	}
 
 
-	bool	get		(T & element)	{	//	Returns false on buffer empty fail
-		if	(empty())					//	Stores 'got' element at parameter address supplied
+	bool	get		(T & element)	{	//	Returns false on buffer empty fail. Type T element could be of any size
+		if	(empty())
 			return	(false);
 		element = buffer[offptr++];		//	Get element from buffer. Post increment pointer
 		offptr %= buffsize;
@@ -71,9 +73,9 @@ public:
 	}
 
 
-	T *	get	()	{			//	Non preferred method for most
-		T *	rv;
-		if	(empty())					//	Stores 'got' element at parameter address supplied
+	T *	get	()	{			//	Non preferred method for most. Returning address means type T object could be of any size
+		T *	rv;				//	return value
+		if	(empty())
 			return	(nullptr);
 		rv = (buffer + offptr++);		//	Get element address. Post increment pointer
 		offptr %= buffsize;
@@ -84,7 +86,7 @@ public:
 
 	bool	put		(T & element)	{	//	Returns false on buffer full fail
 		if	(full)	{					//	Does not over-write oldest data
-			errors |= 2;				//	Flag buffer over-run
+			cberrs |= 2;				//	Flag buffer over-run
 			return	(false);
 		}
 		buffer[onptr++] = element;		//	Put element on buffer. Post increment pointer
@@ -94,27 +96,24 @@ public:
 	}
 
 
-	size_t	on_buff	()	{	//	Return number of items on buffer
+	uint32_t	on_buff	() const	{	//	Return number of items on buffer
 		if (full)
 			return  buffsize;
-		int32_t	rv = onptr - offptr;
-		if	(rv < 0)
-			rv += buffsize;
-		return	(rv);
+		return	(offptr > onptr ? buffsize + onptr - offptr : onptr - offptr);
 	}
 
 
-	size_t	buff_space	()	{
+	uint32_t	buff_space	() const	{
 		return	(buffsize - on_buff())	;
 	}
 
 
-	size_t	on_buffpc	()	{	//	Return percent full
+	uint32_t	on_buffpc	() const	{	//	Return percent full
 		return	((on_buff() * 100) / buffsize);
 	}
 
 
-	float	on_buff_f	()	{	//	Return normalised 0.0 to 1.0 fuel gauge
+	float	on_buff_f	() const	{	//	Return normalised 0.0 to 1.0 fuel gauge
 		return	((float)on_buff() / (float)buffsize);
 	}
 
@@ -245,7 +244,6 @@ class	Serial	{
 	uint32_t	in_esc_seq	{ 0 };
 
 	uint32_t	serial_error 		{0L};
-	uint32_t	serial_error_history{0L};	//	Dec 2024 no use made of this yet
 	uint8_t		rxbuff	[4] {0};			//	Rx DMA places 1 byte here. ISR copies this to circular buffer
 
 	CircularBuffer	<uint8_t>	RxCBuff	{rx_ringbuff_size}	;	//	Default defined fully above, may be overridden in constructor
@@ -258,7 +256,6 @@ public:
 	~Serial	()	{
 		delete	lin_inbuff;
 		delete	lin_tx_buff;
-//		delete	ring_outbuff;
 	}
 
 	Serial	(UART_HandleTypeDef &which_port)	;	//	:	m_huartn {&which_port}
@@ -274,14 +271,16 @@ public:
 	void	set_tx_busy	(bool true_or_false)	;
 	bool	get_tx_busy	()	;		//	Returns true when DMA in progress
 //	bool	test_error	(uint32_t mask)	const;	//	returns true if error bits set after masking
-	uint32_t	test_error	(uint32_t mask)	const;	//	returns true if error bits set after masking
+	uint32_t	test_error	(uint32_t mask)	;	//	returns true if error bits set after masking
 	uint32_t	clear_error	(uint32_t bit);	//	-1 clears all error bits, 0 clears none, INPUT_OVERRUN_ERROR clears INPUT_OVERRUN_ERROR. Returns serial_error
 	void	set_error	(uint32_t bit); //	{	serial_error |= (1 << bit);	}
 	void	report_error	();		//	writes to 'serial' port errors if any and resets all errors
 
 	bool	get	(uint8_t & a)	;
 	bool	read	(uint8_t * buff, size_t & len)	;
-	uint32_t	when	()	{	return	(time_ms_of_most_recent_rx);	}
+	uint32_t	when	()	{	return	(time_ms_of_most_recent_rx)		;	}
+	const	size_t	rx_buffer_size	()	{	return	(rx_ringbuff_size)	;	}	//	Useful to prevent read beyond end of buffer
+	const	size_t	tx_buffer_size	()	{	return	(tx_ringbuff_size)	;	}	//	Probably not useful
 
 }	;
 

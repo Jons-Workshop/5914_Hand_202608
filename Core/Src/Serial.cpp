@@ -1,12 +1,12 @@
 /*
- * Serial.cpp	-	Update	-	17th August 2026
+ * Serial.cpp	-	Update	-	19th August 2026
  * FIXED problem with tx buffer overrun - see write
  * Now using CircularBuffer objects in Tx and Rx (tidier)
  *
  *  Created on: Jun 13, 2023
  *      Author: Jon Freeman  B Eng (Hons) MIET
  *
- *      LAST MODIFIED 17th August 2026
+ *      LAST MODIFIED 19th August 2026
  */
 
 #include	<cstdio>
@@ -83,8 +83,11 @@ Serial::Serial	(UART_HandleTypeDef &which_port, const size_t tx_buffsize, const 
 
 
 bool	Serial::start_rx	()	{	//	Call from startup function. Call from constructor fails, Too Early !
-//	if	(HAL_OK == HAL_UART_Receive_DMA	(m_huartn, rxbuff, 1))	//	huartn and rxbuff 'private'
+#ifdef	USING_RX_DMA
+	if	(HAL_OK == HAL_UART_Receive_DMA	(m_huartn, rxbuff, 1))	//	huartn and rxbuff 'private'
+#else
 	if	(HAL_OK == HAL_UART_Receive_IT	(m_huartn, rxbuff, 1))	//	huartn and rxbuff 'private'
+#endif
 		return	(true);
 	set_error	(HAL_UART_RX);
 	return	(false);
@@ -223,8 +226,8 @@ char *	Serial::test_for_rx_message	()	{	//	Read in any received chars into linea
 
 
 void	Serial::report_error	()	{
+//	int32_t	rxerr = RxCBuff.get_cb_errors();
 	if	(serial_error != 0)	{
-		serial_error_history	|= serial_error;
 		char	t[44];
 		int		len;
 		len = sprintf	(t, "SERIAL ERROR CODE %02lx\r\n", serial_error);
@@ -242,11 +245,8 @@ void	Serial::report_error	()	{
 //}
 
 
-uint32_t	Serial::test_error	(uint32_t mask)	const	{	//	Return true for error, false for no error
-//	uint32_t	e1 = RxCBuff.get_cb_errors()	;
-//	TxCBuff.get_cb_errors()	;
-	return	(serial_error & mask);	//	true for NZ result (error flag set), false for 0 or no error result
-//	return	(((serial_error	|| (RxCBuff.get_errors() << 8) || (TxCBuff.get_errors() << 16)) & mask);	//	true for NZ result (error flag set), false for 0 or no error result
+uint32_t	Serial::test_error	(uint32_t mask)		{	//	Return errors
+	return	((serial_error	|| (RxCBuff.get_cb_errors() << 8) || (TxCBuff.get_cb_errors() << 16)) & mask);	//	true for NZ result (error flag set), false for 0 or no error result
 }
 
 

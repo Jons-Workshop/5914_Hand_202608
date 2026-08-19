@@ -16,13 +16,16 @@
 #include	"ProjectLocoHC.hpp"
 #include	"Serial.hpp"
 
+extern	Serial	pc	;	//	Created in Utils.cpp
+extern	Serial	bt	;
+
 #define	CENTRE_ZERO_KNOB_MODE	false
 
-extern	UART_HandleTypeDef	huart1;	//	uarts used in this project
-extern	UART_HandleTypeDef	huart2;	//	uarts used in this project
+//extern	UART_HandleTypeDef	huart1;	//	uarts used in this project
+//extern	UART_HandleTypeDef	huart2;	//	uarts used in this project
 
-Serial				pc	{huart1, 500, 750}	;		//	which uart, tx buff size, rx buff size
-Serial				bt	{huart2, 500, 500}	;		//
+//Serial				pc	{huart1, 500, 750}	;		//	which uart, tx buff size, rx buff size
+//Serial				bt	{huart2, 410, 420}	;		//
 
 //	This is the Bluetooth Hand Controller with 320x480 Graphic Touch Screen
 
@@ -295,6 +298,16 @@ extern "C" void	ForeverLoop	()	{	// Jumps to here from 'main.c'
 	pc.write	(get_version(), strlen(get_version()));
 	len = sprintf	(t, ", Chip ID 0x%2x\r\n", My_ID.get_ID8());
 	pc.write	(t, len);
+
+//	len = sprintf	(t, "pc Rx bufflen = %d\r\n", pc.rx_buffer_size());
+//	pc.write	(t, len);
+//	len = sprintf	(t, "pc Tx bufflen = %d\r\n", pc.tx_buffer_size());
+//	pc.write	(t, len);
+//	len = sprintf	(t, "bt Rx bufflen = %d\r\n", bt.rx_buffer_size());
+//	pc.write	(t, len);
+//	len = sprintf	(t, "bt Tx bufflen = %d\r\n", bt.tx_buffer_size());
+//	pc.write	(t, len);
+
 	start_ADC	();		//	Continuous ping pong buffering. Reads battery voltage
 	draw_setup_screen	()	;	//	assumes no bluetooth connection yet
 

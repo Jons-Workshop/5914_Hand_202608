@@ -20,14 +20,18 @@
 
 
 bool	CommandLineHandler::CommandExec(const char * inbuff)	{
+	//	Now knows buff_len
 	uint32_t	list_pos = 0;
 	uint32_t 	cmd_wrd_len;
 	par.command_line = inbuff;	//	copy for use by any functions called
 	const char * pEnd;
+	const char * clEnd = inbuff + buff_len - 1;
 	bool	got_numerics;
 	bool	found_cmd = false;
 	for	(int j = 0; j < MAX_CLI_PARAMS; j++)	//	zero all float parameter variables
 		par.flt[j] = 0.0;
+
+//	*(inbuff + buff_len - 1) = 0;	//	Safety force delim at known end of buffer
 
 	while	(!found_cmd && pcmdlist[list_pos].cmd_word)	{
 		cmd_wrd_len = strlen(pcmdlist[list_pos].cmd_word);
@@ -42,7 +46,7 @@ bool	CommandLineHandler::CommandExec(const char * inbuff)	{
 			if	(got_numerics)	{
 				while   (*pEnd && (par.numof_floats < MAX_CLI_PARAMS))  {          //  Assemble all numerics as doubles
 					par.flt[par.numof_floats++] = strtof    ((const char *)pEnd, (char **)&pEnd);
-					while   (*pEnd && !isdigit(*pEnd) && ('.' != *pEnd) && ('-' != *pEnd) && ('+' != *pEnd))  {   //  Can
+					while   (*pEnd && (clEnd > pEnd) && !isdigit(*pEnd) && ('.' != *pEnd) && ('-' != *pEnd) && ('+' != *pEnd))  {   //  Can
 						pEnd++;
 					}   //
 					if  (((*pEnd == '-') || (*pEnd == '+')) && (!isdigit(*(pEnd+1))) && ('.' !=*(pEnd+1)))
